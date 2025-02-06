@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Token Expiry Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e1e2f, #3a3f58);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #ffffff;
+            padding: 20px;
+        }
+
+        .container {
+            background: linear-gradient(135deg, #2c3e50, #4ca1af);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            position: relative;
+            animation: fadeIn 0.8s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            font-size: 26px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        p {
+            font-size: 15px;
+            margin-bottom: 15px;
+            color: #ecf0f1;
+        }
+
+        input {
+            padding: 14px;
+            margin: 10px 0;
+            font-size: 16px;
+            border-radius: 8px;
+            border: none;
+            width: 100%;
+            outline: none;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        input::placeholder {
+            color: #dcdcdc;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: 0.3s;
+            font-weight: bold;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: #fff;
+        }
+
+        .start-btn:hover {
+            background: linear-gradient(135deg, #219150, #1f8f60);
+        }
+
+        .clear-btn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: #fff;
+        }
+
+        .clear-btn:hover {
+            background: linear-gradient(135deg, #c0392b, #a03025);
+        }
+
+        .time {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #f1c40f;
+            margin-top: 20px;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .progress-bar {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            height: 18px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .progress-bar span {
+            display: block;
+            height: 100%;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            border-radius: 10px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .footer {
+            font-size: 13px;
+            margin-top: 20px;
+            color: #ecf0f1;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2><i class="fa-solid fa-clock"></i> JWT Token Expiry Tracker</h2>
+    <p>Enter your JWT Token below to track its expiration time:</p>
+    
+    <input type="text" id="jwtTokenInput" placeholder="Paste your JWT token here">
+    
+    <div class="button-container">
+        <button class="start-btn" onclick="startTracking()">Start Tracking</button>
+        <button class="clear-btn" onclick="clearInput()">Clear</button>
+    </div>
+
+    <div id="remainingTime" class="time">Waiting for token...</div>
+    <div class="progress-bar">
+        <span id="progress" style="width: 0%;"></span>
+    </div>
+
+    <div class="footer">
+        <p>Track your token expiry in real-time. Secure and efficient.</p>
+    </div>
+</div>
+
+<script>
+    let jwtToken = '';
+let interval;
+
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = atob(base64Url);
+        return JSON.parse(base64);
+    } catch (error) {
+        alert('Invalid JWT Token');
+        return null;
+    }
+}
+
+function formatTime(ms) {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}m ${seconds}s`;
+}
+
+function startTracking() {
+    const inputField = document.getElementById('jwtTokenInput');
+    jwtToken = inputField.value.trim();
+
+    if (!jwtToken) {
+        alert('Please enter a JWT token');
+        return;
+    }
+
+    const payload = parseJwt(jwtToken);
+    if (!payload || !payload.exp || !payload.iat) {
+        alert('Invalid JWT Token');
+        return;
+    }
+
+    if (interval) clearInterval(interval);
+    
+    interval = setInterval(updateTime, 1000);
+    updateTime();
+}
+
+function updateTime() {
+    if (!jwtToken) return;
+
+    const payload = parseJwt(jwtToken);
+    if (!payload) return;
+
+    const expTime = payload.exp * 1000;
+    const currentTime = new Date().getTime();
+
+    const remainingTime = expTime - currentTime;
+    const totalTime = (payload.exp - payload.iat) * 1000;
+    const progressPercentage = ((totalTime - remainingTime) / totalTime) * 100;
+
+    if (remainingTime > 0) {
+        document.getElementById('remainingTime').textContent = formatTime(remainingTime);
+        document.getElementById('progress').style.width = `${progressPercentage}%`;
+    } else {
+        document.getElementById('remainingTime').textContent = 'Token expired';
+        document.getElementById('progress').style.width = '100%';
+        clearInterval(interval);
+    }
+}
+
+function clearInput() {
+    document.getElementById('jwtTokenInput').value = '';
+    document.getElementById('remainingTime').textContent = 'Waiting for token...';
+    document.getElementById('progress').style.width = '0%';
+    clearInterval(interval);
+    jwtToken = '';
+}
+
+</script>
+
+</body>
+</html>
